@@ -20,7 +20,7 @@
  * @subpackage Plugin_Name/includes
  * @author     Your Name <email@example.com>
  */
-class Plugin_Name_Activator {
+class Custom_Post_Tax_Hierarchy_Activator {
 
 	/**
 	 * Short Description. (use period)

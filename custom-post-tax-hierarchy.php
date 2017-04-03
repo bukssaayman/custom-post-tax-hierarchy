@@ -33,22 +33,22 @@ if ( ! defined( 'WPINC' ) ) {
  * The code that runs during plugin activation.
  * This action is documented in includes/class-custom-post-tax-hierarchy-activator.php
  */
-function activate_plugin_name() {
+function activate_custom_post_tax_hierarchy() {
 	require_once plugin_dir_path( __FILE__ ) . 'includes/class-custom-post-tax-hierarchy-activator.php';
-	Plugin_Name_Activator::activate();
+	Custom_Post_Tax_Hierarchy_Activator::activate();
 }
 
 /**
  * The code that runs during plugin deactivation.
  * This action is documented in includes/class-custom-post-tax-hierarchy-deactivator.php
  */
-function deactivate_plugin_name() {
+function deactivate_custom_post_tax_hierarchy() {
 	require_once plugin_dir_path( __FILE__ ) . 'includes/class-custom-post-tax-hierarchy-deactivator.php';
-	Plugin_Name_Deactivator::deactivate();
+	Custom_Post_Tax_Hierarchy_Activator::deactivate();
 }
 
-register_activation_hook( __FILE__, 'activate_plugin_name' );
-register_deactivation_hook( __FILE__, 'deactivate_plugin_name' );
+register_activation_hook( __FILE__, 'activate_custom_post_tax_hierarchy' );
+register_deactivation_hook( __FILE__, 'deactivate_custom_post_tax_hierarchy' );
 
 /**
  * The core plugin class that is used to define internationalization,
