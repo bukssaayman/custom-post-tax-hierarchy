@@ -103,7 +103,10 @@ class Custom_Post_Tax_Hierarchy_Admin {
 		);
 		$arr_post_types = get_post_types($args);
 
-		$options = get_option('cpth_settings');
+		$options['selected_cpt'] = array();
+		if(!empty(get_option('cpth_settings'))){
+			$options = get_option('cpth_settings');
+		}
 		?>
 		<ul>
 			<?php

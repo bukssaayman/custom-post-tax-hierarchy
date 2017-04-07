@@ -44,7 +44,7 @@ function activate_custom_post_tax_hierarchy() {
  */
 function deactivate_custom_post_tax_hierarchy() {
 	require_once plugin_dir_path( __FILE__ ) . 'includes/class-custom-post-tax-hierarchy-deactivator.php';
-	Custom_Post_Tax_Hierarchy_Activator::deactivate();
+	Custom_Post_Tax_Hierarchy_Deactivator::deactivate();
 }
 
 register_activation_hook( __FILE__, 'activate_custom_post_tax_hierarchy' );
@@ -71,4 +71,4 @@ function run_custom_post_tax_hierarchy() {
 	$plugin->run();
 
 }
-run_custom_post_tax_hierarchy();
+add_action( 'wp_loaded', 'run_custom_post_tax_hierarchy' ); //this needs to run only after all the CPTs and Taxs have been registered

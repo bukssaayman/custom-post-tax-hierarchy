@@ -34,17 +34,44 @@ class Custom_Post_Tax_Hierarchy_Public {
 		$this->plugin_name = $plugin_name;
 		$this->version = $version;
 
-		$options = get_option('cpth_settings');
-		$this->arr_cpt_for_rewrite = $options['selected_cpt'];
-
 		add_filter('generate_rewrite_rules', array(&$this, 'rewriteRulesForCustomPostTypeAndTax'));
 		add_filter('post_type_link', array(&$this, 'cpth_admin_link'), 1, 2);
+		$this->cpth_get_list_of_cpts();
+		$this->cpth_check_flush_rewrites();
 	}
 
-	protected function getTermHierarchy($term, $custom_tax) {
-		array_push($this->arr_customPostTermSlug, $term->slug);
-		if ($term->parent > 0) {
-			$this->getTermHierarchy(get_term($term->parent), $custom_tax);
+	private function cpth_check_flush_rewrites() {
+		$str_option_name = 'cpth_settings_md5';
+		$arr_option_cptmd5 = get_option($str_option_name);
+		$md5_cpts = md5(json_encode($this->arr_cpt_for_rewrite));
+		if (empty($arr_option_cptmd5)) {
+			update_option($str_option_name, $md5_cpts);
+		} else {
+			if ($arr_option_cptmd5 != $md5_cpts) { //CPT's have changed flush rewrite rules
+				flush_rewrite_rules();
+				update_option($str_option_name, $md5_cpts);
+			}
+		}
+	}
+
+	private function cpth_get_list_of_cpts() {
+		$arr_all_registered_cpts = get_post_types(array(), 'objects');
+
+		$options = get_option('cpth_settings');
+		if (!empty($options['selected_cpt'])) {
+			foreach ($options['selected_cpt'] as $cpt) {
+				$this->arr_cpt_for_rewrite[$cpt] = $arr_all_registered_cpts[$cpt];
+			}
+		}
+	}
+
+	protected function getTermHierarchy($arr_term, $custom_tax) {
+
+		foreach ($arr_term as $term) {
+			array_push($this->arr_customPostTermSlug, $term->slug);
+			if ($term->parent > 0) {
+				$this->getTermHierarchy(get_term($term->parent), $custom_tax);
+			}
 		}
 	}
 
@@ -52,12 +79,14 @@ class Custom_Post_Tax_Hierarchy_Public {
 		$links = array();
 		$taxonomy = get_post_taxonomies($id);
 		$terms = get_the_terms($id, $taxonomy[0]);
+
 		if (is_wp_error($terms))
 			return $terms;
 		if (empty($terms))
 			return false;
 		foreach ($terms as $term) {
-			$link = get_term_link($term, $taxonomy);
+			$link = get_term_link($term, $taxonomy[0]);
+
 			if (is_wp_error($link)) {
 				return $link;
 			}
@@ -81,27 +110,43 @@ class Custom_Post_Tax_Hierarchy_Public {
 	}
 
 	public function rewriteRulesForCustomPostTypeAndTax($wp_rewrite) {
+
+		if (empty($this->arr_cpt_for_rewrite)) {
+			return;
+		}
+
 		$tax_rules = array();
 		$custom_post_rules = array();
 
 		foreach ($this->arr_cpt_for_rewrite as $post_type) {
+
 			$args = array(
-					'post_type' => $post_type,
+					'post_type' => $post_type->name,
 					'posts_per_page' => -1
 			);
+
 			$custom_post_type_posts = new WP_Query($args);
 			foreach ($custom_post_type_posts->posts as $post_key => $post_val) {
+
+				$cpt_base_slug = $this->arr_cpt_for_rewrite[get_post_type($post_val->ID)]->name;
+
+				if (!empty($this->arr_cpt_for_rewrite[get_post_type($post_val->ID)]->rewrite['slug'])) {
+					$cpt_base_slug = $this->arr_cpt_for_rewrite[get_post_type($post_val->ID)]->rewrite['slug'];
+				}
+
 				$arr_slugs = $this->getSlugsForPostTax($post_val->ID);
 
-				//$base_taxonomy = $post_type['basepage']->post_name;
 				if (!empty($arr_slugs)) { //there are more than one slug for the same post, create a rule for each
 					foreach ((array) $arr_slugs as $slug_key => $slug_val) {
+
 						$single_post_slug = explode('/', $slug_val);
+
 						$single_post_slug[] = $post_val->post_name; //add the post name at the end of the array
 						$single_post_slug = array_values(array_filter($single_post_slug)); //re-index after removing all the empty keys from array
-						//$single_post_slug[0] = $base_taxonomy; //replace the old base taxonomy with the new one.
+						$single_post_slug[0] = $cpt_base_slug; //replace the old base taxonomy with the new one.
 						$single_post_slug = implode('/', $single_post_slug) . '-' . $post_val->ID;
-						$custom_post_rules['^' . $single_post_slug . '$'] = 'index.php?' . $post_type . '=' . $post_val->post_name;
+
+						$custom_post_rules['^' . $single_post_slug . '$'] = 'index.php?' . $post_type->name . '=' . $post_val->post_name;
 					}
 				} else { //only one slug available, create the rule
 					$single_post_slug = '/' . $post_val->post_name . '-' . $post_val->ID;
@@ -119,27 +164,30 @@ class Custom_Post_Tax_Hierarchy_Public {
 	}
 
 	public function cpth_admin_link($post_link, $post = NULL) {
+		$cpt_base_slug = $this->arr_cpt_for_rewrite[get_post_type($post->ID)]->name;
 		
-		$cpt_base_slug = sanitize_title_with_dashes(get_post_type($post->ID)); //this should later be content managed
+		if (!empty($this->arr_cpt_for_rewrite[get_post_type($post->ID)]->rewrite['slug'])) {
+			$cpt_base_slug = $this->arr_cpt_for_rewrite[get_post_type($post->ID)]->rewrite['slug'];
+		}
 
-		$this->arr_customPostTermSlug = array(); //re-initialize the array
 //		if (!empty($this->arr_list_of_posst_taxs[get_post_type($post->ID)])) { //this is for a custom post type
 //			$custom_tax = $this->arr_list_of_post_taxs[get_post_type($post->ID)];
 //			if (!empty($custom_tax)) { //I'm inside one of my custom taxonomies
 		if (is_admin()) {
 			$terms = wp_get_object_terms($post->ID, get_post_taxonomies($post), array('fields' => 'all'));
 
-			$terms = count($terms) > 0 ? $terms[0] : $terms;
+			//$terms = count($terms) > 0 ? $terms[0] : $terms;
 		} else {
 			$terms = $this->getTermFromCurrentURL($post);
 		}
 
 		if (!empty($terms)) { //add the terms into the url structure
-			$this->getTermHierarchy($terms, $custom_tax['name']);
-			
-			
-			$slug = implode('/', array_reverse($this->arr_customPostTermSlug));
-			$post_link = '/' .$cpt_base_slug.'/'. $slug . '/' . $post->post_name . '-' . $post->ID . '/';
+			$this->arr_customPostTermSlug = array(); //re-initialize the array
+			$this->getTermHierarchy($terms, get_post_type($post->ID));
+
+			$slug = implode('/', array_reverse(array_filter($this->arr_customPostTermSlug)));
+
+			$post_link = '/' . $cpt_base_slug . '/' . $slug . '/' . $post->post_name . '-' . $post->ID . '/';
 		} else { //append post-id to any custom posts not inside a taxonomy
 			if (is_a($post, 'WP_Term')) { //this is a term link
 				$post_link = '/' . $post->slug . '/';
