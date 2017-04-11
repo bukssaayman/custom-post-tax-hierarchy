@@ -149,8 +149,9 @@ class Custom_Post_Tax_Hierarchy_Public {
 						$custom_post_rules['^' . $single_post_slug . '$'] = 'index.php?' . $post_type->name . '=' . $post_val->post_name;
 					}
 				} else { //only one slug available, create the rule
-					$single_post_slug = '/' . $post_val->post_name . '-' . $post_val->ID;
-					$custom_post_rules['^' . $single_post_slug . '$'] = 'index.php?' . $post_type . '=' . $post_val->post_name;
+					
+					$single_post_slug = $cpt_base_slug.'/' . $post_val->post_name . '-' . $post_val->ID;
+					$custom_post_rules['^' . $single_post_slug . '$'] = 'index.php?' . $post_type->name . '=' . $post_val->post_name;
 				}
 			}
 			$arr_categories = get_categories(array('type' => $post_type, 'taxonomy' => get_post_taxonomies($post_val), 'hide_empty' => 0));
@@ -158,7 +159,7 @@ class Custom_Post_Tax_Hierarchy_Public {
 				$tax_rules['^' . $base_taxonomy . '/' . $category->slug . '/?$'] = 'index.php?' . $category->taxonomy . '=' . $category->slug;
 			}
 		}
-
+		
 		$final_rules = array_merge($custom_post_rules, $tax_rules);
 		$wp_rewrite->rules = $final_rules + $wp_rewrite->rules;
 	}
@@ -175,7 +176,7 @@ class Custom_Post_Tax_Hierarchy_Public {
 //			if (!empty($custom_tax)) { //I'm inside one of my custom taxonomies
 		if (is_admin()) {
 			$terms = wp_get_object_terms($post->ID, get_post_taxonomies($post), array('fields' => 'all'));
-
+			
 			//$terms = count($terms) > 0 ? $terms[0] : $terms;
 		} else {
 			$terms = $this->getTermFromCurrentURL($post);
@@ -187,12 +188,12 @@ class Custom_Post_Tax_Hierarchy_Public {
 
 			$slug = implode('/', array_reverse(array_filter($this->arr_customPostTermSlug)));
 
-			$post_link = '/' . $cpt_base_slug . '/' . $slug . '/' . $post->post_name . '-' . $post->ID . '/';
+			$post_link = home_url().'/'. $cpt_base_slug . '/' . $slug . '/' . $post->post_name . '-' . $post->ID . '/';
 		} else { //append post-id to any custom posts not inside a taxonomy
 			if (is_a($post, 'WP_Term')) { //this is a term link
 				$post_link = '/' . $post->slug . '/';
 			} else {
-				$post_link = $post->slug . '/' . $post->post_name . '-' . $post->ID . '/';
+				$post_link = home_url().'/'.$cpt_base_slug . '/' . $post->post_name . '-' . $post->ID . '/';
 			}
 		}
 		//}
