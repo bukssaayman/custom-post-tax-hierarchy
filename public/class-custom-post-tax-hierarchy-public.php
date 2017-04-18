@@ -34,10 +34,25 @@ class Custom_Post_Tax_Hierarchy_Public {
 		$this->plugin_name = $plugin_name;
 		$this->version = $version;
 
-		add_filter('generate_rewrite_rules', array(&$this, 'rewriteRulesForCustomPostTypeAndTax'));
-		add_filter('post_type_link', array(&$this, 'cpth_admin_link'), 1, 2);
+		$this->cpth_filters_hooks();
 		$this->cpth_get_list_of_cpts();
 		$this->cpth_check_flush_rewrites();
+	}
+
+	private function cpth_filters_hooks() {
+		add_filter('generate_rewrite_rules', array(&$this, 'rewriteRulesForCustomPostTypeAndTax'));
+		add_filter('post_type_link', array(&$this, 'cpth_admin_link'), 1, 2);
+
+		add_action('save_post', array(&$this, 'cpth_post_save_edit'), 1, 2);
+		add_action('edit_post', array(&$this, 'cpth_post_save_edit'), 1, 2);
+	}
+
+	public function cpth_post_save_edit($post_ID, $post_obj) {
+		$this->cpth_flush_rewrites();
+	}
+
+	private function cpth_flush_rewrites() {
+		flush_rewrite_rules();
 	}
 
 	private function cpth_check_flush_rewrites() {
@@ -48,7 +63,7 @@ class Custom_Post_Tax_Hierarchy_Public {
 			update_option($str_option_name, $md5_cpts);
 		} else {
 			if ($arr_option_cptmd5 != $md5_cpts) { //CPT's have changed flush rewrite rules
-				flush_rewrite_rules();
+				$this->cpth_flush_rewrites();
 				update_option($str_option_name, $md5_cpts);
 			}
 		}
@@ -66,7 +81,6 @@ class Custom_Post_Tax_Hierarchy_Public {
 	}
 
 	protected function getTermHierarchy($arr_term, $custom_tax) {
-
 		foreach ($arr_term as $term) {
 			array_push($this->arr_customPostTermSlug, $term->slug);
 			if ($term->parent > 0) {
@@ -75,7 +89,7 @@ class Custom_Post_Tax_Hierarchy_Public {
 		}
 	}
 
-	function getSlugsForPostTax($id) {
+	public function getSlugsForPostTax($id) {
 		$links = array();
 		$taxonomy = get_post_taxonomies($id);
 		$terms = get_the_terms($id, $taxonomy[0]);
@@ -149,38 +163,24 @@ class Custom_Post_Tax_Hierarchy_Public {
 						$custom_post_rules['^' . $single_post_slug . '$'] = 'index.php?' . $post_type->name . '=' . $post_val->post_name;
 					}
 				} else { //only one slug available, create the rule
-					
-					$single_post_slug = $cpt_base_slug.'/' . $post_val->post_name . '-' . $post_val->ID;
+					$single_post_slug = $cpt_base_slug . '/' . $post_val->post_name . '-' . $post_val->ID;
 					$custom_post_rules['^' . $single_post_slug . '$'] = 'index.php?' . $post_type->name . '=' . $post_val->post_name;
 				}
 			}
-			$arr_categories = get_categories(array('type' => $post_type, 'taxonomy' => get_post_taxonomies($post_val), 'hide_empty' => 0));
-			foreach ($arr_categories as $category) {
-				$tax_rules['^' . $base_taxonomy . '/' . $category->slug . '/?$'] = 'index.php?' . $category->taxonomy . '=' . $category->slug;
-			}
 		}
-		
+
 		$final_rules = array_merge($custom_post_rules, $tax_rules);
 		$wp_rewrite->rules = $final_rules + $wp_rewrite->rules;
 	}
 
 	public function cpth_admin_link($post_link, $post = NULL) {
 		$cpt_base_slug = $this->arr_cpt_for_rewrite[get_post_type($post->ID)]->name;
-		
+
 		if (!empty($this->arr_cpt_for_rewrite[get_post_type($post->ID)]->rewrite['slug'])) {
 			$cpt_base_slug = $this->arr_cpt_for_rewrite[get_post_type($post->ID)]->rewrite['slug'];
 		}
 
-//		if (!empty($this->arr_list_of_posst_taxs[get_post_type($post->ID)])) { //this is for a custom post type
-//			$custom_tax = $this->arr_list_of_post_taxs[get_post_type($post->ID)];
-//			if (!empty($custom_tax)) { //I'm inside one of my custom taxonomies
-		if (is_admin()) {
-			$terms = wp_get_object_terms($post->ID, get_post_taxonomies($post), array('fields' => 'all'));
-			
-			//$terms = count($terms) > 0 ? $terms[0] : $terms;
-		} else {
-			$terms = $this->getTermFromCurrentURL($post);
-		}
+		$terms = wp_get_object_terms($post->ID, get_post_taxonomies($post), array('fields' => 'all'));
 
 		if (!empty($terms)) { //add the terms into the url structure
 			$this->arr_customPostTermSlug = array(); //re-initialize the array
@@ -188,24 +188,16 @@ class Custom_Post_Tax_Hierarchy_Public {
 
 			$slug = implode('/', array_reverse(array_filter($this->arr_customPostTermSlug)));
 
-			$post_link = home_url().'/'. $cpt_base_slug . '/' . $slug . '/' . $post->post_name . '-' . $post->ID . '/';
+			$post_link = home_url() . '/' . $cpt_base_slug . '/' . $slug . '/' . $post->post_name . '-' . $post->ID . '/';
 		} else { //append post-id to any custom posts not inside a taxonomy
+			
 			if (is_a($post, 'WP_Term')) { //this is a term link
 				$post_link = '/' . $post->slug . '/';
 			} else {
-				$post_link = home_url().'/'.$cpt_base_slug . '/' . $post->post_name . '-' . $post->ID . '/';
+				$post_link = home_url() . '/' . $cpt_base_slug . '/' . $post->post_name . '-' . $post->ID . '/';
 			}
 		}
-		//}
-		//}
-//		if (is_a($post, 'WP_Term')) { //this is a term link
-//			$post_link_parts = array_values(array_filter(explode('/', str_replace(home_url(), '', $post_link))));
-//			$taxonomy = 'td_' . $post_link_parts[0];
-//			if (!empty($this->arr_list_of_post_taxs[$taxonomy])) {
-//				$updated_taxonomy = $this->arr_list_of_post_taxs[$taxonomy]['basepage']->post_name;
-//				$post_link = str_replace($post_link_parts[0], $updated_taxonomy, $post_link);
-//			}
-//		}
+
 		return $post_link;
 	}
 
