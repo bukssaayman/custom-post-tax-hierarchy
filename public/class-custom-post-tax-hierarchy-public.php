@@ -93,20 +93,20 @@ class Custom_Post_Tax_Hierarchy_Public {
 		$links = array();
 		$taxonomy = get_post_taxonomies($id);
 		$terms = get_the_terms($id, $taxonomy[0]);
-
+		
 		if (is_wp_error($terms))
 			return $terms;
 		if (empty($terms))
 			return false;
+		
+		$this->arr_customPostTermSlug = array(); //reset the hierarchy
+		$this->getTermHierarchy($terms, $taxonomy[0]);
+		
+		$terms = array_filter($this->arr_customPostTermSlug);
 		foreach ($terms as $term) {
-			$link = get_term_link($term, $taxonomy[0]);
-
-			if (is_wp_error($link)) {
-				return $link;
-			}
-			$links[] = esc_url(str_replace(home_url(), '', $link));
+			$links[] = $term;
 		}
-		return $links;
+		return implode('/', array_reverse($links));
 	}
 
 	public function getTermFromCurrentURL($post) {
@@ -149,17 +149,14 @@ class Custom_Post_Tax_Hierarchy_Public {
 				}
 
 				$arr_slugs = $this->getSlugsForPostTax($post_val->ID);
-
-				if (!empty($arr_slugs)) { //there are more than one slug for the same post, create a rule for each
+				
+				if (!empty($arr_slugs)) { 
 					foreach ((array) $arr_slugs as $slug_key => $slug_val) {
-
-						$single_post_slug = explode('/', $slug_val);
-
+						$single_post_slug = array();
+						$single_post_slug[] = $cpt_base_slug; //replace the old base taxonomy with the new one.
+						$single_post_slug[] = $slug_val; //add the post name at the end of the array
 						$single_post_slug[] = $post_val->post_name; //add the post name at the end of the array
-						$single_post_slug = array_values(array_filter($single_post_slug)); //re-index after removing all the empty keys from array
-						$single_post_slug[0] = $cpt_base_slug; //replace the old base taxonomy with the new one.
 						$single_post_slug = implode('/', $single_post_slug) . '-' . $post_val->ID;
-
 						$custom_post_rules['^' . $single_post_slug . '$'] = 'index.php?' . $post_type->name . '=' . $post_val->post_name;
 					}
 				} else { //only one slug available, create the rule
@@ -168,7 +165,7 @@ class Custom_Post_Tax_Hierarchy_Public {
 				}
 			}
 		}
-
+		
 		$final_rules = array_merge($custom_post_rules, $tax_rules);
 		$wp_rewrite->rules = $final_rules + $wp_rewrite->rules;
 	}

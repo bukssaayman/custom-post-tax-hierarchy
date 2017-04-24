@@ -101,41 +101,47 @@ class Custom_Post_Tax_Hierarchy_Admin {
 				'public' => true,
 				'_builtin' => false
 		);
-		$arr_post_types = get_post_types($args);
+		$arr_post_types = get_post_types($args, 'objects');
 
 		$options['selected_cpt'] = array();
-		if(!empty(get_option('cpth_settings'))){
+		if (!empty(get_option('cpth_settings'))) {
 			$options = get_option('cpth_settings');
 		}
 		?>
 		<ul>
 			<?php
-			foreach ($arr_post_types as $key => $value) {
+			if (!empty($arr_post_types)) {
+				foreach ((array) $arr_post_types as $key => $value) {
+					?>
+					<li><input <?php echo in_array($key, $options['selected_cpt'], true) ? 'checked' : '' ?> type='checkbox' id="<?php echo $key; ?>" name='cpth_settings[selected_cpt][]' value='<?php echo $key; ?>'><?php echo $value->label; ?></li>
+					<?php
+				}
+			} else{
 				?>
-				<li><input <?php echo in_array($key, $options['selected_cpt'], true) ? 'checked' : '' ?> type='checkbox' name='cpth_settings[selected_cpt][]' value='<?php echo $key; ?>'><?php echo $value; ?></li>
-				<?php
+					<li>You don't seem to have any custom post types registered yet.</li>
+					<?php
 			}
 			?>
 		</ul>
-		<?php
-	}
+			<?php
+		}
 
-	public function cpth_settings_section_callback() {
+		public function cpth_settings_section_callback() {
 
-		echo __('Settings for Custom Post Type and Taxonomy hierachy', 'wordpress');
-	}
+			echo __('Settings for Custom Post Type and Taxonomy hierachy', 'wordpress');
+		}
 
-	public function cpth_options_page() {
-		?>
+		public function cpth_options_page() {
+			?>
 		<form action='options.php' method='post'>
 
 			<h2>Custom Post Tax Hierarchy</h2>
 
-			<?php
-			settings_fields('cpth_admin_options');
-			do_settings_sections('cpth_admin_options');
-			submit_button();
-			?>
+		<?php
+		settings_fields('cpth_admin_options');
+		do_settings_sections('cpth_admin_options');
+		submit_button();
+		?>
 
 		</form>
 		<?php

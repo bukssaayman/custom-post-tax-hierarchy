@@ -1,4 +1,4 @@
-(function( $ ) {
+(function ($) {
 	'use strict';
 
 	/**
@@ -29,4 +29,15 @@
 	 * practising this, we should strive to set a better example in our own work.
 	 */
 
-})( jQuery );
+	$(window).load(function () {
+		$("#product").change(function () {
+			if (this.checked) {
+				alert('This free version of the plugin does not support Woocommerce products.');
+				$(this).prop('checked', false);
+				;
+			}
+		});
+	});
+
+
+})(jQuery);
