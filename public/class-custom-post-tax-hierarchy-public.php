@@ -41,10 +41,16 @@ class Custom_Post_Tax_Hierarchy_Public {
 
 	private function cpth_filters_hooks() {
 		add_filter('generate_rewrite_rules', array(&$this, 'rewriteRulesForCustomPostTypeAndTax'));
-		add_filter('post_type_link', array(&$this, 'cpth_admin_link'), 1, 2);
+		add_filter('post_type_link', array(&$this, 'cpth_url_link'), 1, 2);
 
 		add_action('save_post', array(&$this, 'cpth_post_save_edit'), 1, 2);
 		add_action('edit_post', array(&$this, 'cpth_post_save_edit'), 1, 2);
+
+		add_action('wp_footer', array(&$this, 'cpth_add_footer_comment'));
+	}
+
+	public function cpth_add_footer_comment() {
+		echo "<!-- SEO boosted by : https://wordpress.org/plugins/custom-post-taxonomy-hierarchy-seo/ --> \n";
 	}
 
 	public function cpth_post_save_edit($post_ID, $post_obj) {
@@ -93,15 +99,15 @@ class Custom_Post_Tax_Hierarchy_Public {
 		$links = array();
 		$taxonomy = get_post_taxonomies($id);
 		$terms = get_the_terms($id, $taxonomy[0]);
-		
+
 		if (is_wp_error($terms))
 			return $terms;
 		if (empty($terms))
 			return false;
-		
+
 		$this->arr_customPostTermSlug = array(); //reset the hierarchy
 		$this->getTermHierarchy($terms, $taxonomy[0]);
-		
+
 		$terms = array_filter($this->arr_customPostTermSlug);
 		foreach ($terms as $term) {
 			$links[] = $term;
@@ -149,8 +155,8 @@ class Custom_Post_Tax_Hierarchy_Public {
 				}
 
 				$arr_slugs = $this->getSlugsForPostTax($post_val->ID);
-				
-				if (!empty($arr_slugs)) { 
+
+				if (!empty($arr_slugs)) {
 					foreach ((array) $arr_slugs as $slug_key => $slug_val) {
 						$single_post_slug = array();
 						$single_post_slug[] = $cpt_base_slug; //replace the old base taxonomy with the new one.
@@ -165,12 +171,17 @@ class Custom_Post_Tax_Hierarchy_Public {
 				}
 			}
 		}
-		
+
 		$final_rules = array_merge($custom_post_rules, $tax_rules);
 		$wp_rewrite->rules = $final_rules + $wp_rewrite->rules;
 	}
 
-	public function cpth_admin_link($post_link, $post = NULL) {
+	public function cpth_url_link($post_link, $post = NULL) {
+		
+		if(empty($this->arr_cpt_for_rewrite[get_post_type($post->ID)])){
+			return $post_link;
+		}
+		
 		$cpt_base_slug = $this->arr_cpt_for_rewrite[get_post_type($post->ID)]->name;
 
 		if (!empty($this->arr_cpt_for_rewrite[get_post_type($post->ID)]->rewrite['slug'])) {
@@ -187,7 +198,6 @@ class Custom_Post_Tax_Hierarchy_Public {
 
 			$post_link = home_url() . '/' . $cpt_base_slug . '/' . $slug . '/' . $post->post_name . '-' . $post->ID . '/';
 		} else { //append post-id to any custom posts not inside a taxonomy
-			
 			if (is_a($post, 'WP_Term')) { //this is a term link
 				$post_link = '/' . $post->slug . '/';
 			} else {

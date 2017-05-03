@@ -69,7 +69,7 @@ class Custom_Post_Tax_Hierarchy {
 	public function __construct() {
 
 		$this->plugin_name = 'custom-post-tax-hierarchy';
-		$this->version = '1.0.0';
+		$this->version = '1.0.1';
 
 		$this->load_dependencies();
 		$this->set_locale();
