@@ -67,10 +67,11 @@ class Custom_Post_Tax_Hierarchy_Public {
 		$md5_cpts = md5(json_encode($this->arr_cpt_for_rewrite));
 		if (empty($arr_option_cptmd5)) {
 			update_option($str_option_name, $md5_cpts);
+			$this->cpth_flush_rewrites(); //first time this is created, flush rules
 		} else {
 			if ($arr_option_cptmd5 != $md5_cpts) { //CPT's have changed flush rewrite rules
-				$this->cpth_flush_rewrites();
 				update_option($str_option_name, $md5_cpts);
+				$this->cpth_flush_rewrites();
 			}
 		}
 	}
@@ -177,11 +178,11 @@ class Custom_Post_Tax_Hierarchy_Public {
 	}
 
 	public function cpth_url_link($post_link, $post = NULL) {
-		
-		if(empty($this->arr_cpt_for_rewrite[get_post_type($post->ID)])){
+
+		if (empty($this->arr_cpt_for_rewrite[get_post_type($post->ID)])) {
 			return $post_link;
 		}
-		
+
 		$cpt_base_slug = $this->arr_cpt_for_rewrite[get_post_type($post->ID)]->name;
 
 		if (!empty($this->arr_cpt_for_rewrite[get_post_type($post->ID)]->rewrite['slug'])) {
