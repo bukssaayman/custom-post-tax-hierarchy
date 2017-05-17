@@ -15,7 +15,7 @@
  * @wordpress-plugin
  * Plugin Name:       Custom Post & Taxonomy Hierarchy SEO
  * Description:       Boost your SEO by including your custom post taxonomy and terms in your URL structure.
- * Version:           1.0.1
+ * Version:           1.0.2
  * Author:            Buks Saayman
  * Author URI:        http://bukssaayman.co.za/
  * License:           GPL-2.0+

@@ -79,12 +79,15 @@ class Custom_Post_Tax_Hierarchy_Public {
 	private function cpth_get_list_of_cpts() {
 		$arr_all_registered_cpts = get_post_types(array(), 'objects');
 
+		$arr_post_taxs = array();
 		$options = get_option('cpth_settings');
 		if (!empty($options['selected_cpt'])) {
-			foreach ($options['selected_cpt'] as $cpt) {
-				$this->arr_cpt_for_rewrite[$cpt] = $arr_all_registered_cpts[$cpt];
+			foreach ($options['selected_cpt'] as $key => $cpt) {
+				$arr_post_taxs[$cpt] = $arr_all_registered_cpts[$cpt];
+				$arr_post_taxs[$cpt]->taxonomies = array_values(get_object_taxonomies($cpt, 'objects'));
 			}
 		}
+		$this->arr_cpt_for_rewrite = $arr_post_taxs;
 	}
 
 	protected function getTermHierarchy($arr_term, $custom_tax) {
@@ -170,6 +173,11 @@ class Custom_Post_Tax_Hierarchy_Public {
 					$single_post_slug = $cpt_base_slug . '/' . $post_val->post_name . '-' . $post_val->ID;
 					$custom_post_rules['^' . $single_post_slug . '$'] = 'index.php?' . $post_type->name . '=' . $post_val->post_name;
 				}
+			}
+
+			$arr_categories = get_categories(array('type' => $post_type->name, 'taxonomy' => $post_type->taxonomies[0]->name, 'hide_empty' => 0));
+			foreach ($arr_categories as $category) {
+				$tax_rules['^' . $cpt_base_slug . '/' . $category->slug . '/?$'] = 'index.php?' . $category->taxonomy . '=' . $category->slug;
 			}
 		}
 
