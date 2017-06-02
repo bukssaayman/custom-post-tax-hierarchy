@@ -21,6 +21,7 @@ class Custom_Post_Tax_Hierarchy_Public {
 	private $version;
 	private $arr_customPostTermSlug = array();
 	private $arr_cpt_for_rewrite = array();
+	private $str_option_name = 'cpth_settings_md5';
 
 	/**
 	 * Initialize the class and set its properties.
@@ -45,8 +46,13 @@ class Custom_Post_Tax_Hierarchy_Public {
 
 		add_action('save_post', array(&$this, 'cpth_post_save_edit'), 1, 2);
 		add_action('edit_post', array(&$this, 'cpth_post_save_edit'), 1, 2);
+		add_action('edit_term', array(&$this, 'cpth_edit_term'), 1, 0);
 
 		add_action('wp_footer', array(&$this, 'cpth_add_footer_comment'));
+	}
+
+	function cpth_edit_term() {
+		$this->cpth_flush_rewrites();
 	}
 
 	public function cpth_add_footer_comment() {
@@ -58,19 +64,19 @@ class Custom_Post_Tax_Hierarchy_Public {
 	}
 
 	private function cpth_flush_rewrites() {
+		update_option($this->str_option_name, array()); //just blank the flush rewrite rule setting so it flushes on next page load
 		flush_rewrite_rules();
 	}
 
 	private function cpth_check_flush_rewrites() {
-		$str_option_name = 'cpth_settings_md5';
-		$arr_option_cptmd5 = get_option($str_option_name);
+		$arr_option_cptmd5 = get_option($this->str_option_name);
 		$md5_cpts = md5(json_encode($this->arr_cpt_for_rewrite));
 		if (empty($arr_option_cptmd5)) {
-			update_option($str_option_name, $md5_cpts);
+			update_option($this->str_option_name, $md5_cpts);
 			$this->cpth_flush_rewrites(); //first time this is created, flush rules
 		} else {
 			if ($arr_option_cptmd5 != $md5_cpts) { //CPT's have changed flush rewrite rules
-				update_option($str_option_name, $md5_cpts);
+				update_option($this->str_option_name, $md5_cpts);
 				$this->cpth_flush_rewrites();
 			}
 		}
